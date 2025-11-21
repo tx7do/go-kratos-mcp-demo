@@ -1,0 +1,185 @@
+﻿syntax = "proto3";
+
+package recommend.service.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+// ------------------------------
+// 1. 枚举类型：定义固定选项,避免硬编码
+// ------------------------------
+
+// 用户行为类型：点击/浏览/收藏/购买
+enum ActionType {
+  ACTION_TYPE_UNSPECIFIED = 0; // 未指定（默认值,避免空指针）
+  ACTION_TYPE_CLICK       = 1; // 点击
+  ACTION_TYPE_VIEW        = 2; // 浏览（停留超3秒）
+  ACTION_TYPE_COLLECT     = 3; // 收藏
+  ACTION_TYPE_BUY         = 4; // 购买
+}
+
+// 推荐场景：区分不同业务场景（用于场景化推荐）
+enum SceneType {
+  SCENE_TYPE_UNSPECIFIED = 0; // 未指定
+  SCENE_TYPE_HOME        = 1; // 首页推荐
+  SCENE_TYPE_COMMUTE     = 2; // 通勤场景（如地铁上,推荐短内容/轻商品）
+  SCENE_TYPE_LEISURE     = 3; // 休闲场景（如周末,推荐长内容/高客单价商品）
+  SCENE_TYPE_SEARCH      = 4; // 搜索后推荐（基于搜索关键词）
+}
+
+// 上下文阶段：标记数据处于推荐链路的哪个模块（MCP中间件用）
+enum ContextStage {
+  CONTEXT_STAGE_UNSPECIFIED = 0; // 未指定
+  CONTEXT_STAGE_INPUT       = 1; // 原始输入（用户行为）
+  CONTEXT_STAGE_RECALL      = 2; // 召回模块（候选集生成）
+  CONTEXT_STAGE_RANK        = 3; // 排序模块（分数计算）
+  CONTEXT_STAGE_FILTER      = 4; // 过滤模块（黑名单/已购过滤）
+  CONTEXT_STAGE_OUTPUT      = 5; // 最终输出（推荐结果）
+}
+
+// ------------------------------
+// 2. 基础数据结构：各模块通用的实体
+// ------------------------------
+
+// 商品基础信息（用于推荐结果展示）
+message Item {
+  int64  item_id    = 1; // 商品ID
+  string title      = 2; // 商品标题
+  float  price      = 3; // 商品价格
+  string image_url  = 4; // 商品图片URL（可选）
+  int32  sales      = 5; // 商品销量（可选,用于热门度排序）
+}
+
+// 排序后的商品（含推荐分数,排序模块输出用）
+message RankedItem {
+  Item   item      = 1; // 商品信息
+  double score     = 2; // 推荐分数（0~100,分数越高越优先）
+  string reason    = 3; // 推荐理由（可选,如"您之前浏览过类似商品"）
+}
+
+// 用户特征（用于个性化推荐,如年龄、偏好标签）
+message UserFeature {
+  string user_id      = 1; // 用户ID
+  int32  age          = 2; // 年龄（可选,0~150）
+  repeated string tags = 3; // 用户偏好标签（可选,如"运动""数码"）
+  string device_type  = 4; // 设备类型（可选,如ios/android/pc）
+}
+
+// ------------------------------
+// 3. 模块上下文：MCP中间件传递的数据结构
+// ------------------------------
+
+// 用户行为输入（推荐系统的原始触发数据）
+message UserActionContext {
+  ContextStage  stage       = 1; // 上下文阶段
+  string        request_id  = 2; // 请求ID（用于链路追踪）
+  UserFeature   user_feature = 3; // 用户特征
+  int64         trigger_item_id = 4; // 触发行为的商品ID（可选）
+  ActionType    action_type = 5; // 触发行为类型
+  SceneType     scene       = 6; // 推荐场景
+  google.protobuf.Timestamp action_time = 7; // 行为时间戳
+}
+
+// 召回模块输入上下文
+message RecallInputContext {
+  ContextStage  stage         = 1; // 上下文阶段
+  string        request_id    = 2; // 关联的请求ID
+  UserFeature   user_feature  = 3; // 用户特征
+  SceneType     scene         = 4; // 推荐场景
+  repeated int64 history_item_ids = 5; // 用户历史行为商品ID列表
+  int32         recall_top_k  = 6; // 召回候选集大小
+}
+
+// 召回模块输出上下文
+message RecallOutputContext {
+  ContextStage  stage         = 1; // 上下文阶段
+  string        request_id    = 2; // 关联的请求ID
+  RecallInputContext input_ctx = 3; // 关联的输入上下文
+  repeated Item candidate_items = 4; // 召回候选商品列表
+  string        recall_strategy = 5; // 召回策略（可选）
+}
+
+// 排序模块输入上下文
+message RankInputContext {
+  ContextStage  stage         = 1; // 上下文阶段
+  string        request_id    = 2; // 关联的请求ID
+  RecallOutputContext recall_ctx = 3; // 召回模块输出
+  map<string, string> extra_features = 4; // 额外特征（可选）
+  int32         rank_top_k    = 5; // 排序后保留数量
+}
+
+// 排序模块输出上下文
+message RankOutputContext {
+  ContextStage  stage         = 1; // 上下文阶段
+  string        request_id    = 2; // 关联的请求ID
+  RankInputContext input_ctx  = 3; // 关联的输入上下文
+  repeated RankedItem ranked_items = 4; // 排序后的商品列表
+  string        rank_model    = 5; // 排序模型（可选）
+}
+
+// 过滤模块输入上下文
+message FilterInputContext {
+  ContextStage  stage         = 1; // 上下文阶段
+  string        request_id    = 2; // 关联的请求ID
+  RankOutputContext rank_ctx  = 3; // 排序模块输出
+  repeated int64 blacklist_item_ids = 4; // 商品黑名单（可选）
+  repeated int64 purchased_item_ids = 5; // 用户已购商品ID（可选）
+}
+
+// 过滤模块输出上下文（即最终推荐结果）
+message RecommendOutput {
+  ContextStage  stage         = 1; // 上下文阶段
+  string        request_id    = 2; // 关联的请求ID
+  FilterInputContext input_ctx = 3; // 关联的输入上下文
+  repeated RankedItem recommend_items = 4; // 最终推荐商品列表
+  int32         total_count   = 5; // 推荐商品总数
+  google.protobuf.Timestamp response_time = 6; // 推荐结果生成时间
+}
+
+// ------------------------------
+// 4. API服务定义：Kratos Server/Client的核心接口
+// ------------------------------
+
+// 推荐服务：定义推荐系统的对外API（支持HTTP和gRPC）
+service RecommendService {
+  rpc TriggerRecommend(RecommendRequest) returns (RecommendResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/recommend"
+      body: "*"
+    };
+  }
+
+  rpc GetRecommendHistory(RecommendHistoryRequest) returns (RecommendHistoryResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/recommend/history"
+    };
+  }
+}
+
+// 推荐请求
+message RecommendRequest {
+  UserActionContext action_ctx = 1; // 用户行为上下文
+}
+
+// 推荐响应
+message RecommendResponse {
+  RecommendOutput    output    = 1; // 推荐结果
+  string             request_id = 2; // 关联的请求ID
+}
+
+// 推荐历史请求
+message RecommendHistoryRequest {
+  string        user_id     = 1; // 用户ID
+  int32         page        = 2; // 页码（从1开始）
+  int32         page_size   = 3; // 每页数量
+  google.protobuf.Timestamp start_time = 4; // 开始时间（可选）
+  google.protobuf.Timestamp end_time   = 5; // 结束时间（可选）
+}
+
+// 推荐历史响应
+message RecommendHistoryResponse {
+  repeated RecommendOutput histories = 1; // 推荐历史列表
+  int32                total     = 2; // 历史总数
+  int32                page      = 3; // 当前页码
+  int32                page_size = 4; // 每页数量
+}

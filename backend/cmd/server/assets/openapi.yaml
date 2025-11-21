@@ -1,0 +1,348 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: RecommendService API
+    description: 推荐服务：定义推荐系统的对外API（支持HTTP和gRPC）
+    version: 0.0.1
+paths:
+    /api/v1/recommend:
+        post:
+            tags:
+                - RecommendService
+            operationId: RecommendService_TriggerRecommend
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RecommendRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RecommendResponse'
+    /api/v1/recommend/history:
+        get:
+            tags:
+                - RecommendService
+            operationId: RecommendService_GetRecommendHistory
+            parameters:
+                - name: userId
+                  in: query
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: startTime
+                  in: query
+                  schema:
+                    type: string
+                    format: date-time
+                - name: endTime
+                  in: query
+                  schema:
+                    type: string
+                    format: date-time
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RecommendHistoryResponse'
+components:
+    schemas:
+        FilterInputContext:
+            type: object
+            properties:
+                stage:
+                    enum:
+                        - CONTEXT_STAGE_UNSPECIFIED
+                        - CONTEXT_STAGE_INPUT
+                        - CONTEXT_STAGE_RECALL
+                        - CONTEXT_STAGE_RANK
+                        - CONTEXT_STAGE_FILTER
+                        - CONTEXT_STAGE_OUTPUT
+                    type: string
+                    format: enum
+                requestId:
+                    type: string
+                rankCtx:
+                    $ref: '#/components/schemas/RankOutputContext'
+                blacklistItemIds:
+                    type: array
+                    items:
+                        type: string
+                purchasedItemIds:
+                    type: array
+                    items:
+                        type: string
+            description: 过滤模块输入上下文
+        Item:
+            type: object
+            properties:
+                itemId:
+                    type: string
+                title:
+                    type: string
+                price:
+                    type: number
+                    format: float
+                imageUrl:
+                    type: string
+                sales:
+                    type: integer
+                    format: int32
+            description: 商品基础信息（用于推荐结果展示）
+        RankInputContext:
+            type: object
+            properties:
+                stage:
+                    enum:
+                        - CONTEXT_STAGE_UNSPECIFIED
+                        - CONTEXT_STAGE_INPUT
+                        - CONTEXT_STAGE_RECALL
+                        - CONTEXT_STAGE_RANK
+                        - CONTEXT_STAGE_FILTER
+                        - CONTEXT_STAGE_OUTPUT
+                    type: string
+                    format: enum
+                requestId:
+                    type: string
+                recallCtx:
+                    $ref: '#/components/schemas/RecallOutputContext'
+                extraFeatures:
+                    type: object
+                    additionalProperties:
+                        type: string
+                rankTopK:
+                    type: integer
+                    format: int32
+            description: 排序模块输入上下文
+        RankOutputContext:
+            type: object
+            properties:
+                stage:
+                    enum:
+                        - CONTEXT_STAGE_UNSPECIFIED
+                        - CONTEXT_STAGE_INPUT
+                        - CONTEXT_STAGE_RECALL
+                        - CONTEXT_STAGE_RANK
+                        - CONTEXT_STAGE_FILTER
+                        - CONTEXT_STAGE_OUTPUT
+                    type: string
+                    format: enum
+                requestId:
+                    type: string
+                inputCtx:
+                    $ref: '#/components/schemas/RankInputContext'
+                rankedItems:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RankedItem'
+                rankModel:
+                    type: string
+            description: 排序模块输出上下文
+        RankedItem:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/Item'
+                score:
+                    type: number
+                    format: double
+                reason:
+                    type: string
+            description: 排序后的商品（含推荐分数,排序模块输出用）
+        RecallInputContext:
+            type: object
+            properties:
+                stage:
+                    enum:
+                        - CONTEXT_STAGE_UNSPECIFIED
+                        - CONTEXT_STAGE_INPUT
+                        - CONTEXT_STAGE_RECALL
+                        - CONTEXT_STAGE_RANK
+                        - CONTEXT_STAGE_FILTER
+                        - CONTEXT_STAGE_OUTPUT
+                    type: string
+                    format: enum
+                requestId:
+                    type: string
+                userFeature:
+                    $ref: '#/components/schemas/UserFeature'
+                scene:
+                    enum:
+                        - SCENE_TYPE_UNSPECIFIED
+                        - SCENE_TYPE_HOME
+                        - SCENE_TYPE_COMMUTE
+                        - SCENE_TYPE_LEISURE
+                        - SCENE_TYPE_SEARCH
+                    type: string
+                    format: enum
+                historyItemIds:
+                    type: array
+                    items:
+                        type: string
+                recallTopK:
+                    type: integer
+                    format: int32
+            description: 召回模块输入上下文
+        RecallOutputContext:
+            type: object
+            properties:
+                stage:
+                    enum:
+                        - CONTEXT_STAGE_UNSPECIFIED
+                        - CONTEXT_STAGE_INPUT
+                        - CONTEXT_STAGE_RECALL
+                        - CONTEXT_STAGE_RANK
+                        - CONTEXT_STAGE_FILTER
+                        - CONTEXT_STAGE_OUTPUT
+                    type: string
+                    format: enum
+                requestId:
+                    type: string
+                inputCtx:
+                    $ref: '#/components/schemas/RecallInputContext'
+                candidateItems:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Item'
+                recallStrategy:
+                    type: string
+            description: 召回模块输出上下文
+        RecommendHistoryResponse:
+            type: object
+            properties:
+                histories:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RecommendOutput'
+                total:
+                    type: integer
+                    format: int32
+                page:
+                    type: integer
+                    format: int32
+                pageSize:
+                    type: integer
+                    format: int32
+            description: 推荐历史响应
+        RecommendOutput:
+            type: object
+            properties:
+                stage:
+                    enum:
+                        - CONTEXT_STAGE_UNSPECIFIED
+                        - CONTEXT_STAGE_INPUT
+                        - CONTEXT_STAGE_RECALL
+                        - CONTEXT_STAGE_RANK
+                        - CONTEXT_STAGE_FILTER
+                        - CONTEXT_STAGE_OUTPUT
+                    type: string
+                    format: enum
+                requestId:
+                    type: string
+                inputCtx:
+                    $ref: '#/components/schemas/FilterInputContext'
+                recommendItems:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RankedItem'
+                totalCount:
+                    type: integer
+                    format: int32
+                responseTime:
+                    type: string
+                    format: date-time
+            description: 过滤模块输出上下文（即最终推荐结果）
+        RecommendRequest:
+            type: object
+            properties:
+                actionCtx:
+                    $ref: '#/components/schemas/UserActionContext'
+            description: 推荐请求
+        RecommendResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                output:
+                    $ref: '#/components/schemas/RecommendOutput'
+                requestId:
+                    type: string
+            description: 推荐响应
+        UserActionContext:
+            type: object
+            properties:
+                stage:
+                    enum:
+                        - CONTEXT_STAGE_UNSPECIFIED
+                        - CONTEXT_STAGE_INPUT
+                        - CONTEXT_STAGE_RECALL
+                        - CONTEXT_STAGE_RANK
+                        - CONTEXT_STAGE_FILTER
+                        - CONTEXT_STAGE_OUTPUT
+                    type: string
+                    format: enum
+                requestId:
+                    type: string
+                userFeature:
+                    $ref: '#/components/schemas/UserFeature'
+                triggerItemId:
+                    type: string
+                actionType:
+                    enum:
+                        - ACTION_TYPE_UNSPECIFIED
+                        - ACTION_TYPE_CLICK
+                        - ACTION_TYPE_VIEW
+                        - ACTION_TYPE_COLLECT
+                        - ACTION_TYPE_BUY
+                    type: string
+                    format: enum
+                scene:
+                    enum:
+                        - SCENE_TYPE_UNSPECIFIED
+                        - SCENE_TYPE_HOME
+                        - SCENE_TYPE_COMMUTE
+                        - SCENE_TYPE_LEISURE
+                        - SCENE_TYPE_SEARCH
+                    type: string
+                    format: enum
+                actionTime:
+                    type: string
+                    format: date-time
+            description: 用户行为输入（推荐系统的原始触发数据）
+        UserFeature:
+            type: object
+            properties:
+                userId:
+                    type: string
+                age:
+                    type: integer
+                    format: int32
+                tags:
+                    type: array
+                    items:
+                        type: string
+                deviceType:
+                    type: string
+            description: 用户特征（用于个性化推荐,如年龄、偏好标签）
+tags:
+    - name: RecommendService

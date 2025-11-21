@@ -1,0 +1,51 @@
+﻿syntax = "proto3";
+
+package conf;
+
+// Recommend 配置顶层结构
+message RecommendConfig {
+  string name = 1;
+  string version = 2;
+
+  Mcp mcp = 3;
+  Service service = 4;
+
+  // mcp 相关配置
+  message Mcp {
+    Server server = 1;
+    Context context = 2;
+  }
+
+  message Server {
+    // 启动超时时间，原为字符串如 "15s"
+    string start_timeout = 1;
+  }
+
+  message Context {
+    // 用户历史行为最大缓存长度
+    int32 max_history_len = 1;
+  }
+
+  // service 相关配置
+  message Service {
+    Recall recall = 1;
+    Rank rank = 2;
+    Filter filter = 3;
+  }
+
+  message Recall {
+    // 召回候选集大小
+    int32 top_k = 1;
+  }
+
+  message Rank {
+    // 排序后返回数量
+    int32 top_k = 1;
+  }
+
+  message Filter {
+    // 黑名单商品ID
+    repeated int64 blacklist = 1;
+  }
+}
+

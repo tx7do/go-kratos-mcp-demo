@@ -1,0 +1,16 @@
+﻿name: recommend-mcp-server
+version: v1.0.0
+mcp:
+  server:
+    start_timeout: "15s"
+  context:
+    max_history_len: 10  # 用户历史行为最大缓存长度
+service:
+  recall:
+    top_k: 50  # 召回候选集大小
+  rank:
+    top_k: 10  # 排序后返回数量
+  filter:
+    blacklist:
+      - 999
+      - 888  # 黑名单商品ID
