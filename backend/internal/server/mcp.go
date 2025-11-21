@@ -15,28 +15,49 @@ func NewMcpServer(_ log.Logger, recommendService *service.RecommendService) *mcp
 	srv := mcpServer.NewServer(
 		mcpServer.WithServerName("Recommend MCP Server"),
 		mcpServer.WithServerVersion("1.0.0"),
+		mcpServer.WithMCPServeType(mcpServer.ServerTypeHTTP),
+		mcpServer.WithMCPServeAddress(":8080"),
 		mcpServer.WithMCPServerOptions(
 			server.WithToolCapabilities(false),
 			server.WithRecovery(),
 		),
 	)
 
-	recommendTool := mcp.NewTool("recommend",
-		mcp.WithDescription("Provide product recommendations based on user behavior"),
-		mcp.WithString("user_id",
-			mcp.Required(),
-			mcp.Description("The ID of the user"),
-		),
-		mcp.WithNumber("item_id",
-			mcp.Required(),
-			mcp.Description("The ID of the item the user interacted with"),
-		),
-		mcp.WithString("scene",
-			mcp.Description("The recommendation scene or context"),
-		),
-	)
+	var err error
 
-	_ = srv.RegisterHandler(recommendTool, recommendService.HandleRecommend)
+	// 注册推荐工具
+	if err = srv.RegisterHandler(
+		mcp.Tool{
+			Name:        "recommend",
+			Description: "获取个性化推荐结果",
+			InputSchema: mcp.ToolInputSchema{
+				Type: "object",
+				Properties: map[string]interface{}{
+					"userFeature": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"userId": map[string]interface{}{
+								"type":        "string",
+								"description": "用户ID",
+							},
+						},
+					},
+					"triggerItemId": map[string]interface{}{
+						"type":        "integer",
+						"description": "触发推荐的商品ID",
+					},
+					"scene": map[string]interface{}{
+						"type":        "string",
+						"description": "推荐场景",
+					},
+				},
+				Required: []string{"userFeature"},
+			},
+		},
+		recommendService.HandleRecommend,
+	); err != nil {
+		log.Errorf("failed to register recommend tool: %v", err)
+	}
 
 	return srv
 }
