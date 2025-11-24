@@ -36,4 +36,4 @@
 - GitHub项目地址: <https://github.com/tx7do/go-kratos-mcp-demo>
 - Gitee项目地址: <https://gitee.com/tx7do/go-kratos-mcp-demo>
 - MCP 协议封装库: <https://github.com/mark3labs/mcp-go>
-- Kratos Transport MCP 扩展: <https://github.com/tx7do/kratos-transport/transport/mcp>
+- Kratos Transport MCP 扩展: [github.com/tx7do/kratos-transport/transport/mcp](https://github.com/tx7do/kratos-transport/tree/main/transport/mcp)
